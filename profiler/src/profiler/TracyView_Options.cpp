@@ -103,6 +103,23 @@ void View::DrawOptions()
         }
         if( expand )
         {
+	    ImGui::SameLine();
+	    if( ImGui::SmallButton( "Select all" ) )
+	    {
+		for( size_t i=0; i<gpuData.size(); i++ )
+		{
+		    m_tc.GetItem( gpuData[i] ).SetVisible( true );
+		}
+	    }
+	    ImGui::SameLine();
+	    if( ImGui::SmallButton( "Unselect all" ) )
+	    {
+		for( size_t i=0; i<gpuData.size(); i++ )
+		{
+		    m_tc.GetItem( gpuData[i] ).SetVisible( false );
+		}
+	    }
+
             for( size_t i=0; i<gpuData.size(); i++ )
             {
                 const auto& timeline = gpuData[i]->threadData.begin()->second.timeline;
