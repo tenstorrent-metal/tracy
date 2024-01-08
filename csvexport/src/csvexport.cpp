@@ -276,7 +276,7 @@ int main(int argc, char** argv)
     if (args.unwrap)
     {
         columns = {
-            "name", "src_file", "src_line", "ns_since_start", "exec_time_ns", "thread", "value"
+            "name", "src_file", "src_line", "zone_name", "zone_text", "ns_since_start", "exec_time_ns", "thread", "value"
         };
     }
     else
@@ -308,17 +308,30 @@ int main(int argc, char** argv)
             for (const auto& zone_thread_data : zone_data.zones) {
                 const auto zone_event = zone_thread_data.Zone();
                 const auto tId = zone_thread_data.Thread();
+                if (worker.HasZoneExtra(*zone_event))
+                {
+                    auto extra = worker.GetZoneExtra(*zone_event);
+                    if (extra.name.Active())
+                    {
+                        values[3] = worker.GetString(extra.name);
+                    }
+                    if (extra.text.Active())
+                    {
+                        values[4] = worker.GetString(extra.text);
+                    }
+                }
+
                 const auto start = zone_event->Start();
                 const auto end = zone_event->End();
 
-                values[3] = std::to_string(start);
+                values[5] = std::to_string(start);
 
                 auto timespan = end - start;
                 if (args.self_time) {
                     timespan -= GetZoneChildTimeFast(worker, *zone_event);
                 }
-                values[4] = std::to_string(timespan);
-                values[5] = std::to_string(tId);
+                values[6] = std::to_string(timespan);
+                values[7] = std::to_string(tId);
 
                 std::string row = join(values, args.separator);
                 printf("%s\n", row.data());
