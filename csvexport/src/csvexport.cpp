@@ -25,6 +25,8 @@ void print_usage_exit(int e)
     fprintf(stderr, "\n");
     fprintf(stderr, "  -h, --help        Print usage\n");
     fprintf(stderr, "  -f, --filter arg  Filter zone names (default: "")\n");
+    fprintf(stderr, "  -x arg            List of special functions delimited by comma (default: "")\n");
+    fprintf(stderr, "  -p arg            Parent to find for special functions (default: "")\n");
     fprintf(stderr, "  -s, --sep arg     CSV separator (default: ,)\n");
     fprintf(stderr, "  -c, --case        Case sensitive filtering\n");
     fprintf(stderr, "  -e, --self        Get self times\n");
@@ -40,6 +42,8 @@ struct Args {
     const char* filter;
     const char* separator;
     const char* trace_file;
+    const char* special_functions;
+    const char* special_parent_function;
     bool case_sensitive;
     bool self_time;
     bool unwrap;
@@ -55,7 +59,7 @@ Args parse_args(int argc, char** argv)
         print_usage_exit(1);
     }
 
-    Args args = { "", ",", "", false, false, false, false, false, false };
+    Args args = { "", ",", "", "", "", false, false, false, false, false, false };
 
     struct option long_opts[] = {
         { "help", no_argument, NULL, 'h' },
@@ -67,11 +71,13 @@ Args parse_args(int argc, char** argv)
         { "gpu", no_argument, NULL, 'g' },
         { "messages", no_argument, NULL, 'm' },
         { "plot", no_argument, NULL, 'p' },
+        { "special_functions", no_argument, NULL, 'x' },
+        { "special_parent_function", no_argument, NULL, 'y' },
         { NULL, 0, NULL, 0 }
     };
 
     int c;
-    while ((c = getopt_long(argc, argv, "hf:s:ceugmp", long_opts, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "hf:y:x:s:ceugmp", long_opts, NULL)) != -1)
     {
         switch (c)
         {
@@ -83,6 +89,12 @@ Args parse_args(int argc, char** argv)
             break;
         case 's':
             args.separator = optarg;
+            break;
+        case 'p':
+            args.special_parent_function = optarg;
+            break;
+        case 'x':
+            args.special_functions = optarg;
             break;
         case 'c':
             args.case_sensitive = true;
@@ -163,6 +175,60 @@ std::string join(const T& v, const char* sep) {
     return s.str();
 }
 
+//From TracyView_Utility.cpp
+const tracy::ZoneEvent* GetZoneParent(const tracy::Worker& worker, const tracy::ZoneEvent& zone, uint64_t tid )
+{
+    const auto& thread = worker.GetThreadData(tid);
+    if( thread == nullptr )
+    {
+        return nullptr;
+    }
+    const tracy::ZoneEvent* parent = nullptr;
+    const tracy::Vector<tracy::short_ptr<tracy::ZoneEvent>>* timeline = &thread->timeline;
+    if( timeline == nullptr || timeline->empty() ) return nullptr;
+    for(;;)
+    {
+        if( timeline->is_magic() )
+        {
+            auto vec = (tracy::Vector<tracy::ZoneEvent>*)timeline;
+            auto it = std::upper_bound( vec->begin(), vec->end(), zone.Start(), [] ( const auto& l, const auto& r ) { return l < r.Start(); } );
+            if( it != vec->begin() ) --it;
+            if( zone.IsEndValid() && it->Start() > zone.End() ) break;
+            if( it == &zone ) return parent;
+            if( !it->HasChildren() ) break;
+            parent = it;
+            timeline = &worker.GetZoneChildren( parent->Child() );
+        }
+        else
+        {
+            auto it = std::upper_bound( timeline->begin(), timeline->end(), zone.Start(), [] ( const auto& l, const auto& r ) { return l < r->Start(); } );
+            if( it != timeline->begin() ) --it;
+            if( zone.IsEndValid() && (*it)->Start() > zone.End() ) break;
+            if( *it == &zone ) return parent;
+            if( !(*it)->HasChildren() ) break;
+            parent = *it;
+            timeline = &worker.GetZoneChildren( parent->Child() );
+        }
+    }
+    return nullptr;
+}
+
+const tracy::ZoneEvent* GetSpecialParent(const tracy::Worker& worker, const tracy::ZoneEvent& zone_event, uint64_t tid, std::string& functionName)
+{
+    const auto parent_zone_event = GetZoneParent(worker, zone_event, tid);
+    if (parent_zone_event != nullptr)
+    {
+        std::string parent_zone_name = get_name(parent_zone_event->SrcLoc(), worker);
+        std::string parent_zone_text = "";
+        if (parent_zone_name.find(functionName) != std::string::npos)
+        {
+            return parent_zone_event;
+        }
+        return GetSpecialParent(worker, *parent_zone_event, tid, functionName);
+    }
+    return nullptr;
+}
+
 // From TracyView.cpp
 int64_t GetZoneChildTimeFast(
     const tracy::Worker& worker,
@@ -216,10 +282,10 @@ int main(int argc, char** argv)
 
     auto worker = tracy::Worker(*f);
 
-    if (args.unwrapMessages) 
+    if (args.unwrapMessages)
     {
         const auto& msgs = worker.GetMessages();
-    
+
         if (msgs.size() > 0)
         {
             std::vector<const char*> columnsForMessages;
@@ -244,7 +310,7 @@ int main(int argc, char** argv)
         {
             printf("There are currently no messages!\n");
         }
-    
+
         return 0;
     }
 
@@ -316,8 +382,11 @@ int main(int argc, char** argv)
     }
 
     auto& slz = worker.GetSourceLocationZones();
+    auto& slzg = worker.GetGpuSourceLocationZones();
     tracy::Vector<decltype(slz.begin())> slz_selected;
+    tracy::Vector<decltype(slzg.begin())> slzg_selected;
     slz_selected.reserve(slz.size());
+    slzg_selected.reserve(slzg.size());
 
     uint32_t total_cnt = 0;
     for(auto it = slz.begin(); it != slz.end(); ++it)
@@ -340,11 +409,27 @@ int main(int argc, char** argv)
         }
     }
 
-    std::vector<const char*> columns;
+    std::vector<std::string> specialFunctions = {};
+    std::string specialParent = args.special_parent_function;
+    if (specialParent.size() > 0)
+    {
+        size_t pos = 0;
+        std::string token;
+        std::string delimiter = ",";
+        std::string functionsStr = args.special_functions;
+        while ((pos = functionsStr.find(delimiter)) != std::string::npos) {
+            token = functionsStr.substr(0, pos);
+            specialFunctions.push_back(token);
+            functionsStr.erase(0, pos + delimiter.length());
+        }
+        specialFunctions.push_back(functionsStr);
+    }
+
+    std::vector<std::string> columns;
     if (args.unwrap)
     {
         columns = {
-            "name", "src_file", "src_line", "ns_since_start", "exec_time_ns", "thread", "value"
+            "name", "src_file", "src_line", "zone_name", "zone_text", "ns_since_start", "exec_time_ns", "thread", "value", "special_parent_text"
         };
     }
     else
@@ -372,14 +457,27 @@ int main(int argc, char** argv)
 
         if (args.unwrap)
         {
-            int i = 0;
             for (const auto& zone_thread_data : zone_data.zones) {
                 const auto zone_event = zone_thread_data.Zone();
                 const auto tId = zone_thread_data.Thread();
+
+                if (worker.HasZoneExtra(*zone_event))
+                {
+                    auto extra = worker.GetZoneExtra(*zone_event);
+                    if (extra.name.Active())
+                    {
+                        values[3] = worker.GetString(extra.name);
+                    }
+                    if (extra.text.Active())
+                    {
+                        values[4] = "\"" + (std::string)worker.GetString(extra.text) + "\"";
+                    }
+                }
+
                 const auto start = zone_event->Start();
                 const auto end = zone_event->End();
 
-                values[3] = std::to_string(start);
+                values[5] = std::to_string(start);
 
                 auto timespan = end - start;
                 if (args.self_time) {
@@ -393,7 +491,27 @@ int main(int argc, char** argv)
                         values[6] = worker.GetString(text);
                     }
                 }
+                values[6] = std::to_string(timespan);
+                values[7] = std::to_string(tId);
 
+                for (auto& function: specialFunctions)
+                {
+                    if (function == values[0])
+                    {
+                        const auto special_parent_zone_event = GetSpecialParent(worker, *zone_event, worker.DecompressThread(tId), specialParent);
+                        if (special_parent_zone_event != nullptr)
+                        {
+                            if (worker.HasZoneExtra(*special_parent_zone_event))
+                            {
+                                auto extra = worker.GetZoneExtra(*special_parent_zone_event);
+                                if (extra.text.Active())
+                                {
+                                    values[8] = worker.GetString(extra.text);
+                                }
+                            }
+                        }
+                    }
+                }
                 std::string row = join(values, args.separator);
                 printf("%s\n", row.data());
             }
@@ -444,11 +562,41 @@ int main(int argc, char** argv)
                     values[3] = std::to_string(val.time.Val());
                     values[6] = std::to_string(val.val);
                 }
+//=======
+    //for(auto& it : slzg_selected)
+    //{
+        //std::vector<std::string> values(columns.size());
+
+        //values[0] = get_name(it->first, worker);
+
+        //const auto& srcloc = worker.GetSourceLocation(it->first);
+        //values[1] = worker.GetString(srcloc.file);
+        //values[2] = std::to_string(srcloc.line);
+
+        //const auto& zone_data = it->second;
+
+        //if (args.unwrap)
+        //{
+            //int i = 0;
+            //for (const auto& zone_thread_data : zone_data.zones) {
+                //const auto zone_event = zone_thread_data.Zone();
+                //const auto tId = zone_thread_data.Thread();
+
+                //const auto start = zone_event->GpuStart();
+                //const auto end = zone_event->GpuEnd();
+
+                //values[5] = std::to_string(start);
+
+                //auto timespan = end - start;
+
+                //values[6] = std::to_string(timespan);
+                //values[7] = std::to_string(tId);
+
+//>>>>>>> TTDevice sync support
                 std::string row = join(values, args.separator);
                 printf("%s\n", row.data());
             }
         }
     }
-
     return 0;
 }

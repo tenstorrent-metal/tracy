@@ -5,6 +5,7 @@
 #include "TracyTimelineContext.hpp"
 #include "TracyView.hpp"
 #include "../Fonts.hpp"
+#include "../public/common/TracyTTDeviceData.hpp"
 
 namespace tracy
 {
@@ -33,10 +34,22 @@ bool View::DrawGpu( const TimelineContext& ctx, const GpuCtxData& gpu, int& offs
 
     const auto singleThread = gpu.threadData.size() == 1;
     int depth = 0;
+    constexpr int threadNameSize = 30;
+    char buf[threadNameSize];
 
+    Vector<uint64_t> tds;
     for( auto& td : gpu.threadData )
     {
-        auto& tl = td.second.timeline;
+        tds.push_back(td.first);
+    }
+    std::sort (tds.begin(), tds.end());
+
+    for( auto& tn :  tds)
+    {
+        auto & td = gpu.threadData.at(tn);
+        TTDeviceEvent event = TTDeviceEvent (tn);
+        snprintf(buf, threadNameSize, "%s", riscName[event.risc].c_str());
+        auto& tl = td.timeline;
         assert( !tl.empty() );
         if( tl.is_magic() )
         {
@@ -45,14 +58,14 @@ bool View::DrawGpu( const TimelineContext& ctx, const GpuCtxData& gpu, int& offs
             {
                 const auto begin = tlm.front().GpuStart();
                 const auto drift = GpuDrift( &gpu );
-                if( !singleThread ) offset += sstep;
+                offset += sstep;
                 const auto partDepth = DispatchGpuZoneLevel( tl, hover, pxns, int64_t( nspx ), wpos, offset, 0, gpu.thread, yMin, yMax, begin, drift );
                 if( partDepth != 0 )
                 {
                     if( !singleThread )
                     {
                         ImGui::PushFont( g_fonts.normal, FontSmall );
-                        DrawTextContrast( draw, wpos + ImVec2( ty, offset-1-sstep ), 0xFFFFAAAA, m_worker.GetThreadName( td.first ) );
+                        DrawTextContrast( draw, wpos + ImVec2( ty, offset-1-sstep ), 0xFFFFAAAA, buf );
                         DrawLine( draw, dpos + ImVec2( 0, offset+sty-sstep ), dpos + ImVec2( w, offset+sty-sstep ), 0x22FFAAAA );
                         ImGui::PopFont();
                     }
@@ -72,14 +85,14 @@ bool View::DrawGpu( const TimelineContext& ctx, const GpuCtxData& gpu, int& offs
             {
                 const auto begin = tl.front()->GpuStart();
                 const auto drift = GpuDrift( &gpu );
-                if( !singleThread ) offset += sstep;
+                offset += sstep;
                 const auto partDepth = DispatchGpuZoneLevel( tl, hover, pxns, int64_t( nspx ), wpos, offset, 0, gpu.thread, yMin, yMax, begin, drift );
                 if( partDepth != 0 )
                 {
                     if( !singleThread )
                     {
                         ImGui::PushFont( g_fonts.normal, FontSmall );
-                        DrawTextContrast( draw, wpos + ImVec2( ty, offset-1-sstep ), 0xFFFFAAAA, m_worker.GetThreadName( td.first ) );
+                        DrawTextContrast( draw, wpos + ImVec2( ty, offset-1-sstep ), 0xFFFFAAAA, buf );
                         DrawLine( draw, dpos + ImVec2( 0, offset+sty-sstep ), dpos + ImVec2( w, offset+sty-sstep ), 0x22FFAAAA );
                         ImGui::PopFont();
                     }

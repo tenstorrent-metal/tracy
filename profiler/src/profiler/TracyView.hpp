@@ -47,7 +47,8 @@ constexpr const char* GpuContextNames[] = {
     "Metal",
     "Custom",
     "CUDA",
-    "Rocprof"
+    "Rocprof",
+    "TT Device"
 };
 
 struct MemoryPage;
