@@ -25,6 +25,8 @@
 #define TracyTTCollect(c)
 
 #define TracySetCpuTime()
+#define TracyGetSyncDiffTime()
+
 
 namespace tracy
 {
@@ -61,12 +63,26 @@ namespace tracy {
         End
     };
 
-    inline int64_t m_tcpu = 0;
+    inline uint64_t m_tcpu = 0;
+    inline uint64_t m_syncTimeDiff = 0;
 
     static inline void set_cpu_time()
     {
         ZoneScoped;
-        m_tcpu = Profiler::GetTime();
+        if (m_tcpu != 0)
+        {
+            m_syncTimeDiff = Profiler::GetTime() - m_tcpu;
+            std::cout << m_syncTimeDiff << std::endl;
+        }
+        else
+        {
+            m_tcpu = Profiler::GetTime();
+        }
+    }
+
+    static inline uint64_t get_sync_diff_time()
+    {
+        return m_syncTimeDiff;
     }
 
     struct EventInfo
@@ -424,6 +440,7 @@ using TracyTTCtx = tracy::TTCtx*;
 #define TracyTTCollect(ctx, deviceData) ctx->Collect(deviceData)
 
 #define TracySetCpuTime() tracy::set_cpu_time();
+#define TracyGetSyncDiffTime() tracy::get_sync_diff_time();
 #endif
 
 #endif
