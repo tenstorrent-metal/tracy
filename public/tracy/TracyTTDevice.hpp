@@ -6,6 +6,7 @@
 #define TracyTTContext() nullptr
 #define TracyTTDestroy(c)
 #define TracyTTContextName(c, x, y)
+#define TracyTTContextPopulate(c, x, y)
 
 #define TracyTTNamedZone(c, x, y, z, w)
 #define TracyTTNamedZoneC(c, x, y, z, w, v)
@@ -19,8 +20,11 @@
 #define TracyTTZoneCS(c, x, y, z, w)
 #define TracyTTZoneTransientS(c,x,y,z,w,v)
 
-#define TracyTTNamedZoneSetEvent(x, e)
-#define TracyTTZoneSetEvent(e)
+#define TracyTTNamedZoneSetBeginEvent(v, e)
+#define TracyTTZoneSetBeginEvent(e)
+
+#define TracyTTNamedZoneSetEndEvent(v, e)
+#define TracyTTZoneSetEndEvent(e)
 
 #define TracyTTCollect(c)
 
@@ -125,90 +129,6 @@ namespace tracy {
             Profiler::QueueSerialFinish();
         }
 
-        void Collect(std::map<uint32_t, std::map<TTDeviceEvent, uint64_t ,TTDeviceEvent_cmp>>& device_data)
-        {
-            ZoneScopedC(Color::Red4);
-
-            if (m_tail == m_head) return;
-
-#ifdef TRACY_ON_DEMAND
-            if (!GetProfiler().IsConnected())
-            {
-                m_head = m_tail = 0;
-            }
-#endif
-
-
-            for (; m_tail != m_head; m_tail = (m_tail + 1) % QueryCount)
-            {
-
-                ZoneScopedNC("Add Marker", Color::Red4);
-                EventInfo eventInfo = GetQuery(m_tail);
-
-                uint64_t threadID = eventInfo.event.get_thread_id();
-                TTDeviceEvent event = eventInfo.event;
-                uint64_t timeShift = 0;
-
-                if (eventInfo.phase == EventPhase::Begin)
-                {
-                    if (eventInfo.event.marker == 0)
-                    {
-                        event.marker = 1;
-                    }
-                    else if (eventInfo.event.marker == 1)
-                    {
-                        event.marker = 2;
-                    }
-                    else
-                    {
-                        timeShift = -10;
-                    }
-                }
-                else
-                {
-                    if (eventInfo.event.marker == 0)
-                    {
-                        event.marker = 4;
-                    }
-                    else if (eventInfo.event.marker == 1)
-                    {
-                        event.marker = 3;
-                    }
-                    else
-                    {
-                        timeShift = 10;
-                    }
-                }
-
-                if (device_data.find(event.run_num) != device_data.end() &&
-                        device_data[event.run_num].find (event) != device_data[event.run_num].end())
-                {
-                    uint64_t timestamp = device_data[event.run_num].at(event);
-
-                    auto item = Profiler::QueueSerial();
-                    MemWrite(&item->hdr.type, QueueType::GpuTime);
-                    MemWrite(&item->gpuTime.gpuTime, (uint64_t)(timestamp) + timeShift);
-                    MemWrite(&item->gpuTime.queryId, (uint16_t)m_tail);
-                    MemWrite(&item->gpuTime.context, GetId());
-                    Profiler::QueueSerialFinish();
-
-//#define TT_DEBUG
-#ifdef TT_DEBUG
-                    static int counter = 0;
-                    counter++;
-                    std::cout << counter << ","\
-                        << event.marker << ","\
-                        << event.risc << ","\
-                        << event.core_x << ","\
-                        << event.core_y << ","\
-                        << timestamp << std::endl;
-#endif
-
-                }
-
-            }
-        }
-
         tracy_force_inline uint8_t GetId() const
         {
             return m_contextId;
@@ -227,6 +147,66 @@ namespace tracy {
         {
             TRACY_TT_ASSERT(id < QueryCount);
             return m_query[id];
+        }
+
+        void PushStartZone (const TTDeviceEvent& event)
+        {
+            constexpr std::array<int,6> customColors = {
+                tracy::Color::Orange2,
+                tracy::Color::SeaGreen3,
+                tracy::Color::SkyBlue3,
+                tracy::Color::Turquoise2,
+                tracy::Color::CadetBlue1,
+                tracy::Color::Yellow3
+            };
+
+            const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::Begin });
+
+            const auto srcloc = Profiler::AllocSourceLocation(
+                    event.line,
+                    event.file.c_str(),
+                    event.file.length(),
+                    event.zone_name.c_str(),
+                    event.zone_name.length(),
+                    event.zone_name.c_str(),
+                    event.zone_name.length(),
+                    customColors[event.risc % customColors.size()]);
+
+            auto zoneBegin = Profiler::QueueSerial();
+            MemWrite(&zoneBegin->hdr.type, QueueType::GpuZoneBeginAllocSrcLocSerial);
+            MemWrite(&zoneBegin->gpuZoneBegin.cpuTime, Profiler::GetTime());
+            MemWrite(&zoneBegin->gpuZoneBegin.srcloc, srcloc);
+            MemWrite(&zoneBegin->gpuZoneBegin.thread, (uint32_t)event.get_thread_id());
+            MemWrite(&zoneBegin->gpuZoneBegin.queryId, (uint16_t)queryId);
+            MemWrite(&zoneBegin->gpuZoneBegin.context, this->GetId());
+            Profiler::QueueSerialFinish();
+
+            auto zoneTime = Profiler::QueueSerial();
+            MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)event.timestamp);
+            MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
+            MemWrite(&zoneTime->gpuTime.context, this->GetId());
+            Profiler::QueueSerialFinish();
+        }
+
+        void PushEndZone (const TTDeviceEvent& event)
+        {
+            const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::End });
+
+            auto zoneEnd = Profiler::QueueSerial();
+            MemWrite(&zoneEnd->hdr.type, QueueType::GpuZoneEndSerial);
+            MemWrite(&zoneEnd->gpuZoneEnd.cpuTime, Profiler::GetTime());
+            MemWrite(&zoneEnd->gpuZoneBegin.thread, (uint32_t)event.get_thread_id());
+            MemWrite(&zoneEnd->gpuZoneBegin.queryId, (uint16_t)queryId);
+            MemWrite(&zoneEnd->gpuZoneBegin.context, this->GetId());
+            Profiler::QueueSerialFinish();
+            
+            auto zoneTime = Profiler::QueueSerial();
+            MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)event.timestamp);
+            MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
+            MemWrite(&zoneTime->gpuTime.context, this->GetId());
+            Profiler::QueueSerialFinish();
         }
 
     private:
@@ -342,7 +322,7 @@ namespace tracy {
             MemWrite(&item->gpuZoneBegin.context, ctx->GetId());
             Profiler::QueueSerialFinish();
         }
-        tracy_force_inline void SetEvent(TTDeviceEvent event)
+        tracy_force_inline void SetBeginEvent(TTDeviceEvent event)
         {
             if (!m_active) return;
             m_event = event;
@@ -390,6 +370,7 @@ using TracyTTCtx = tracy::TTCtx*;
 #define TracyTTContext() tracy::CreateTTContext();
 #define TracyTTDestroy(ctx) tracy::DestroyTTContext(ctx);
 #define TracyTTContextName(ctx, name, size) ctx->Name(name, size)
+#define TracyTTContextPopulate(ctx, timeshift, frequency) ctx->PopulateTTContext(timeshift, frequency)
 #if defined TRACY_HAS_CALLSTACK && defined TRACY_CALLSTACK
 #  define TracyTTNamedZone(ctx, varname, name, active, threadID) static constexpr tracy::SourceLocationData TracyConcat(__tracy_gpu_source_location,TracyLine) { name, TracyFunction, TracyFile, (uint32_t)TracyLine, 0 }; tracy::TTCtxScope varname(ctx, &TracyConcat(__tracy_gpu_source_location,TracyLine), TRACY_CALLSTACK, active, threadID );
 #  define TracyTTNamedZoneC(ctx, varname, name, color, active, threadID) static constexpr tracy::SourceLocationData TracyConcat(__tracy_gpu_source_location,TracyLine) { name, TracyFunction, TracyFile, (uint32_t)TracyLine, color }; tracy::TTCtxScope varname(ctx, &TracyConcat(__tracy_gpu_source_location,TracyLine), TRACY_CALLSTACK, active , threadID);
@@ -418,8 +399,11 @@ using TracyTTCtx = tracy::TTCtx*;
 #  define TracyTTZoneTransientS( ctx, varname, name, depth, color, active , threadID) TracyTTZoneTransient( ctx, varname, name, color, active , threadID)
 #endif
 
-#define TracyTTNamedZoneSetEvent(varname, event) varname.SetEvent(event)
-#define TracyTTZoneSetEvent(event) __tracy_gpu_zone.SetEvent(event)
+#define TracyTTNamedZoneSetBeginEvent(varname, event) varname.SetBeginEvent(event)
+#define TracyTTZoneSetBeginEvent(event) __tracy_gpu_zone.SetBeginEvent(event)
+
+#define TracyTTNamedZoneSetEndEvent(varname, event) varname.SetEndEvent(event)
+#define TracyTTZoneSetEndEvent(event) __tracy_gpu_zone.SetEndEvent(event)
 
 #define TracyTTCollect(ctx, deviceData) ctx->Collect(deviceData)
 

@@ -4,6 +4,13 @@
 namespace tracy
 {
     static std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
+
+    enum TTDeviceEventPhase
+    {
+        begin,
+        end
+    };
+
     struct TTDeviceEvent
     {
         static constexpr uint64_t RISC_BIT_COUNT =  3;
@@ -17,6 +24,8 @@ namespace tracy
         static constexpr uint64_t CHIP_BIT_SHIFT = CORE_Y_BIT_SHIFT + CORE_Y_BIT_COUNT;
         static constexpr uint64_t RUN_NUM_BIT_SHIFT = CHIP_BIT_SHIFT + CHIP_BIT_COUNT;
 
+        static constexpr uint64_t INVALID_NUM = 1LL << 63;
+
         static_assert ((RISC_BIT_COUNT +
                     CORE_X_BIT_COUNT +
                     CORE_Y_BIT_COUNT +
@@ -29,8 +38,24 @@ namespace tracy
         uint64_t core_y;
         uint64_t risc;
         uint64_t marker;
+        uint64_t timestamp;
+        uint64_t line;
+        std::string file;
+        std::string zone_name;
+        TTDeviceEventPhase zone_phase;
 
-        TTDeviceEvent (): run_num(-1),chip_id(-1),core_x(-1),core_y(-1),risc(-1),marker(-1)
+        TTDeviceEvent (): 
+            run_num(INVALID_NUM),
+            chip_id(INVALID_NUM),
+            core_x(INVALID_NUM),
+            core_y(INVALID_NUM),
+            risc(INVALID_NUM),
+            marker(INVALID_NUM),
+            timestamp(INVALID_NUM),
+            line(INVALID_NUM),
+            file(""),
+            zone_name(""),
+            zone_phase(begin)
         {
         }
 
@@ -40,8 +65,13 @@ namespace tracy
                 uint64_t core_x,
                 uint64_t core_y,
                 uint64_t risc,
-                uint64_t marker
-                ): run_num(run_num),chip_id(chip_id),core_x(core_x),core_y(core_y),risc(risc),marker(marker)
+                uint64_t marker,
+                uint64_t timestamp,
+                uint64_t line,
+                std::string file,
+                std::string zone_name,
+                TTDeviceEventPhase zone_phase
+                ): run_num(run_num),chip_id(chip_id),core_x(core_x),core_y(core_y),risc(risc),marker(marker),timestamp(timestamp),line(line),file(file),zone_name(zone_name),zone_phase(zone_phase)
         {
         }
 
@@ -61,28 +91,6 @@ namespace tracy
                                chip_id << CHIP_BIT_SHIFT;
 
             return threadID;
-        }
-
-
-    };
-
-    struct TTDeviceEvent_cmp
-    {
-        bool operator() ( TTDeviceEvent a, TTDeviceEvent b ) const
-        {
-            if (a.get_thread_id() < b.get_thread_id())
-            {
-                return true;
-            }
-            else if (a.get_thread_id() > b.get_thread_id())
-            {
-                return false;
-            }
-            else
-            {
-                return a.marker < b.marker;
-            }
-
         }
     };
 }
