@@ -129,6 +129,35 @@ namespace tracy {
             Profiler::QueueSerialFinish();
         }
 
+        void Collect()
+        {
+            ZoneScopedC(Color::Red4);
+
+            if (m_tail == m_head) return;
+
+#ifdef TRACY_ON_DEMAND
+            if (!GetProfiler().IsConnected())
+            {
+                m_head = m_tail = 0;
+            }
+#endif
+
+
+            for (; m_tail != m_head; m_tail = (m_tail + 1) % QueryCount)
+            {
+
+                ZoneScopedNC("Add Marker", Color::Red4);
+                EventInfo eventInfo = GetQuery(m_tail);
+
+                auto item = Profiler::QueueSerial();
+                MemWrite(&item->hdr.type, QueueType::GpuTime);
+                MemWrite(&item->gpuTime.gpuTime, (uint64_t)eventInfo.event.timestamp);
+                MemWrite(&item->gpuTime.queryId, (uint16_t)m_tail);
+                MemWrite(&item->gpuTime.context, GetId());
+                Profiler::QueueSerialFinish();
+            }
+        }
+
         tracy_force_inline uint8_t GetId() const
         {
             return m_contextId;
@@ -162,14 +191,16 @@ namespace tracy {
 
             const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::Begin });
 
+            std::string zoneName = event.zone_name + "-" + std::to_string(event.run_num);
+
             const auto srcloc = Profiler::AllocSourceLocation(
                     event.line,
                     event.file.c_str(),
                     event.file.length(),
-                    event.zone_name.c_str(),
-                    event.zone_name.length(),
-                    event.zone_name.c_str(),
-                    event.zone_name.length(),
+                    zoneName.c_str(),
+                    zoneName.length(),
+                    zoneName.c_str(),
+                    zoneName.length(),
                     customColors[event.risc % customColors.size()]);
 
             auto zoneBegin = Profiler::QueueSerial();
