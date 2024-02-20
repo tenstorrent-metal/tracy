@@ -83,6 +83,11 @@ namespace tracy
             chip_id = (threadID >> CHIP_BIT_SHIFT) & ((1 << CHIP_BIT_COUNT) - 1);
         }
 
+        bool operator<( const TTDeviceEvent& r)
+        {
+            return timestamp < r.timestamp;
+        }
+
         uint64_t get_thread_id() const
         {
             uint64_t threadID = risc |\
