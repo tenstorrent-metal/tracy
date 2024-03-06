@@ -89,15 +89,13 @@ namespace tracy {
             MemWrite(&item->gpuNewContext.type, GpuContextType::tt_device);
             MemWrite(&item->gpuNewContext.context, GetId());
             MemWrite(&item->gpuNewContext.flags, GpuContextCalibration);
-#ifdef TRACY_ON_DEMAND
-            GetProfiler().DeferItem(*item);
-#endif
             Profiler::QueueSerialFinish();
         }
 
         void Name( const char* name, uint16_t len )
         {
             auto ptr = (char*)tracy_malloc( len );
+
             memcpy( ptr, name, len );
 
             auto item = Profiler::QueueSerial();
@@ -105,13 +103,12 @@ namespace tracy {
             MemWrite( &item->gpuContextNameFat.context, GetId() );
             MemWrite( &item->gpuContextNameFat.ptr, (uint64_t)ptr );
             MemWrite( &item->gpuContextNameFat.size, len );
-#ifdef TRACY_ON_DEMAND
-            GetProfiler().DeferItem( *item );
-#endif
             Profiler::QueueSerialFinish();
+
+            //trac_free(ptr);
         }
 
-        tracy_force_inline uint8_t GetId() const
+        tracy_force_inline uint16_t GetId() const
         {
             return m_contextId;
         }
@@ -193,7 +190,7 @@ namespace tracy {
 
     private:
 
-        uint8_t m_contextId;
+        uint16_t m_contextId;
 
         EventInfo m_query[QueryCount];
         unsigned int m_head; // index at which a new event should be inserted
