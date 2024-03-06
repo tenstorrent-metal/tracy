@@ -52,7 +52,10 @@ namespace tracy {
     static inline void set_cpu_time()
     {
         ZoneScoped;
-        m_tcpu = Profiler::GetTime();
+        if (m_tcpu == 0)
+        {
+            m_tcpu = Profiler::GetTime();
+        }
     }
 
     struct EventInfo
@@ -175,9 +178,9 @@ namespace tracy {
             auto zoneEnd = Profiler::QueueSerial();
             MemWrite(&zoneEnd->hdr.type, QueueType::GpuZoneEndSerial);
             MemWrite(&zoneEnd->gpuZoneEnd.cpuTime, Profiler::GetTime());
-            MemWrite(&zoneEnd->gpuZoneBegin.thread, (uint32_t)event.get_thread_id());
-            MemWrite(&zoneEnd->gpuZoneBegin.queryId, (uint16_t)queryId);
-            MemWrite(&zoneEnd->gpuZoneBegin.context, this->GetId());
+            MemWrite(&zoneEnd->gpuZoneEnd.thread, (uint32_t)event.get_thread_id());
+            MemWrite(&zoneEnd->gpuZoneEnd.queryId, (uint16_t)queryId);
+            MemWrite(&zoneEnd->gpuZoneEnd.context, this->GetId());
             Profiler::QueueSerialFinish();
             
             auto zoneTime = Profiler::QueueSerial();
