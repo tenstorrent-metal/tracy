@@ -8,7 +8,8 @@ namespace tracy
     enum TTDeviceEventPhase
     {
         begin,
-        end
+        end,
+        sum
     };
 
     struct TTDeviceEvent
