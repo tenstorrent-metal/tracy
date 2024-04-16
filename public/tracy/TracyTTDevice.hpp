@@ -6,11 +6,14 @@
 #define TracyTTContext() nullptr
 #define TracyTTDestroy(c)
 #define TracyTTContextName(c, x, y)
-#define TracyTTContextPopulate(c, x, y)
+#define TracyTTContextPopulate(c, x, y, z)
 #define TracyTTPushStartZone(c, e)
 #define TracyTTPushEndZone(c, e)
 
-#define TracySetCpuTime()
+#define TracyGetTimerMul() 0
+#define TracyGetBaseTime() 0
+#define TracyGetCpuTime() 0
+#define TracySetCpuTime( t )
 
 namespace tracy
 {
@@ -25,6 +28,7 @@ using TracyTTCtx = void*;
 #include <cassert>
 #include <sstream>
 #include <fstream>
+#include <cmath>
 
 #include "Tracy.hpp"
 #include "../client/TracyCallstack.hpp"
@@ -49,13 +53,24 @@ namespace tracy {
 
     inline int64_t m_tcpu = 0;
 
-    static inline void set_cpu_time()
+    static inline double get_tracy_timer_mul()
     {
-        ZoneScoped;
-        if (m_tcpu == 0)
-        {
-            m_tcpu = Profiler::GetTime();
-        }
+        return tracy::GetProfiler().m_timerMul;
+    }
+
+    static inline int64_t get_tracy_base_time()
+    {
+        return tracy::GetInitTime();
+    }
+    
+    static inline int64_t get_cpu_time()
+    {
+        return tracy::Profiler::GetTime();
+    }
+
+    static inline void set_cpu_sync_time(int64_t tcpu)
+    {
+        m_tcpu = tcpu;
     }
 
     struct EventInfo
@@ -77,22 +92,41 @@ namespace tracy {
             ZoneScopedC(Color::Red4);
         }
 
-        void PopulateTTContext(int64_t tgpu, float period)
+        void PopulateTTContext(int64_t tcpu, double tgpu, double frequency)
         {
-            ZoneScopedC(Color::Red);
-            int64_t tcpu;
-            tcpu = m_tcpu;
+            m_frequency = frequency;
+            m_tgpu = tgpu;
+            if (tcpu == 0) tcpu = m_tcpu;
 
             auto item = Profiler::QueueSerial();
             MemWrite(&item->hdr.type, QueueType::GpuNewContext);
             MemWrite(&item->gpuNewContext.cpuTime, tcpu);
-            MemWrite(&item->gpuNewContext.gpuTime, tgpu);
+            MemWrite(&item->gpuNewContext.gpuTime, (int64_t)round((double)m_tgpu/m_frequency));
             memset(&item->gpuNewContext.thread, 0, sizeof(item->gpuNewContext.thread));
-            MemWrite(&item->gpuNewContext.period, period);
+            MemWrite(&item->gpuNewContext.period, (float)1.0f);
             MemWrite(&item->gpuNewContext.type, GpuContextType::tt_device);
             MemWrite(&item->gpuNewContext.context, GetId());
             MemWrite(&item->gpuNewContext.flags, GpuContextCalibration);
             Profiler::QueueSerialFinish();
+
+            mm_tcpu = tcpu;
+        }
+
+        void CalibrateTTContext(int64_t tcpu, double tgpu, double frequency)
+        {
+            m_frequency = frequency;
+            m_tgpu = tgpu;
+            if (tcpu == 0) tcpu = m_tcpu;
+
+            auto item = Profiler::QueueSerial();
+            MemWrite( &item->hdr.type, QueueType::GpuCalibration );
+            MemWrite( &item->gpuCalibration.gpuTime, (int64_t)round((double)m_tgpu/m_frequency) );
+            MemWrite( &item->gpuCalibration.cpuTime, tcpu );
+            MemWrite( &item->gpuCalibration.cpuDelta, mm_tcpu - tcpu );
+            MemWrite( &item->gpuCalibration.context, GetId() );
+            Profiler::QueueSerialFinish();
+
+            mm_tcpu = tcpu;
         }
 
         void Name( const char* name, uint16_t len )
@@ -176,7 +210,7 @@ namespace tracy {
 
             auto zoneTime = Profiler::QueueSerial();
             MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
-            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)event.timestamp);
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp/m_frequency));
             MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
             MemWrite(&zoneTime->gpuTime.context, this->GetId());
             Profiler::QueueSerialFinish();
@@ -196,7 +230,7 @@ namespace tracy {
             
             auto zoneTime = Profiler::QueueSerial();
             MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
-            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)event.timestamp);
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp/m_frequency));
             MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
             MemWrite(&zoneTime->gpuTime.context, this->GetId());
             Profiler::QueueSerialFinish();
@@ -205,6 +239,9 @@ namespace tracy {
     private:
 
         uint16_t m_contextId;
+        double m_tgpu = 0;
+        uint64_t  mm_tcpu = 0;
+        double m_frequency = 0;
 
         EventInfo m_query[QueryCount];
         unsigned int m_head; // index at which a new event should be inserted
@@ -230,14 +267,18 @@ namespace tracy {
 
 using TracyTTCtx = tracy::TTCtx*;
 
-#define TracyTTContext() tracy::CreateTTContext();
-#define TracyTTDestroy(ctx) tracy::DestroyTTContext(ctx);
+#define TracyTTContext() tracy::CreateTTContext()
+#define TracyTTDestroy(ctx) tracy::DestroyTTContext(ctx)
 #define TracyTTContextName(ctx, name, size) ctx->Name(name, size)
-#define TracyTTContextPopulate(ctx, timeshift, frequency) ctx->PopulateTTContext(timeshift, frequency)
-#define TracyTTPushStartZone(ctx, event) ctx->PushStartZone(event);
-#define TracyTTPushEndZone(ctx, event) ctx->PushEndZone(event);
+#define TracyTTContextPopulate(ctx, cpuTime, timeshift, frequency) ctx->PopulateTTContext(cpuTime, timeshift, frequency)
+#define TracyTTContextCalibrate(ctx, cpuTime, timeshift, frequency) ctx->CalibrateTTContext(cpuTime, timeshift, frequency)
+#define TracyTTPushStartZone(ctx, event) ctx->PushStartZone(event)
+#define TracyTTPushEndZone(ctx, event) ctx->PushEndZone(event)
 
-#define TracySetCpuTime() tracy::set_cpu_time();
+#define TracyGetTimerMul() tracy::get_tracy_timer_mul()
+#define TracyGetBaseTime() tracy::get_tracy_base_time()
+#define TracyGetCpuTime() tracy::get_cpu_time()
+#define TracySetCpuTime( tcpu ) tracy::set_cpu_sync_time(tcpu)
 
 #endif
 #endif

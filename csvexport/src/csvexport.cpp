@@ -314,8 +314,11 @@ int main(int argc, char** argv)
     }
 
     auto& slz = worker.GetSourceLocationZones();
+    auto& slzg = worker.GetGpuSourceLocationZones();
     tracy::Vector<decltype(slz.begin())> slz_selected;
+    tracy::Vector<decltype(slzg.begin())> slzg_selected;
     slz_selected.reserve(slz.size());
+    slzg_selected.reserve(slzg.size());
 
     uint32_t total_cnt = 0;
     for(auto it = slz.begin(); it != slz.end(); ++it)
@@ -489,5 +492,39 @@ int main(int argc, char** argv)
         }
     }
 
+    for(auto& it : slzg_selected)
+    {
+        std::vector<std::string> values(columns.size());
+
+        values[0] = get_name(it->first, worker);
+
+        const auto& srcloc = worker.GetSourceLocation(it->first);
+        values[1] = worker.GetString(srcloc.file);
+        values[2] = std::to_string(srcloc.line);
+
+        const auto& zone_data = it->second;
+
+        if (args.unwrap)
+        {
+            int i = 0;
+            for (const auto& zone_thread_data : zone_data.zones) {
+                const auto zone_event = zone_thread_data.Zone();
+                const auto tId = zone_thread_data.Thread();
+
+                const auto start = zone_event->GpuStart();
+                const auto end = zone_event->GpuEnd();
+
+                values[5] = std::to_string(start);
+
+                auto timespan = end - start;
+
+                values[6] = std::to_string(timespan);
+                values[7] = std::to_string(tId);
+
+                std::string row = join(values, args.separator);
+                printf("%s\n", row.data());
+            }
+        }
+    }
     return 0;
 }
