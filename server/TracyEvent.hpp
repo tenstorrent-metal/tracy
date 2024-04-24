@@ -716,7 +716,7 @@ struct GpuCtxData
     uint32_t overflowMul;
     StringIdx name;
     unordered_flat_map<uint64_t, GpuCtxThreadData> threadData;
-    short_ptr<GpuEvent> query[64*1024];
+    short_ptr<GpuEvent> query[1024*1024];
 };
 
 enum { GpuCtxDataSize = sizeof( GpuCtxData ) };
