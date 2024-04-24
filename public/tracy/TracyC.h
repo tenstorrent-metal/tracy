@@ -143,25 +143,25 @@ struct ___tracy_c_zone_context
 struct ___tracy_gpu_time_data
 {
     int64_t gpuTime;
-    uint16_t queryId;
+    uint32_t queryId;
     uint8_t context;
 };
 
 struct ___tracy_gpu_zone_begin_data {
     uint64_t srcloc;
-    uint16_t queryId;
+    uint32_t queryId;
     uint8_t context;
 };
 
 struct ___tracy_gpu_zone_begin_callstack_data {
     uint64_t srcloc;
     int depth;
-    uint16_t queryId;
+    uint32_t queryId;
     uint8_t context;
 };
 
 struct ___tracy_gpu_zone_end_data {
-    uint16_t queryId;
+    uint32_t queryId;
     uint8_t context;
 };
 
