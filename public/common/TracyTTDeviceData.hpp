@@ -84,9 +84,9 @@ namespace tracy
             chip_id = (threadID >> CHIP_BIT_SHIFT) & ((1 << CHIP_BIT_COUNT) - 1);
         }
 
-        bool operator<( const TTDeviceEvent& r)
+        friend bool operator<(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs)
         {
-            return timestamp < r.timestamp;
+            return std::tie(lhs.timestamp, lhs.chip_id, lhs.core_x, lhs.core_y, lhs.risc, lhs.marker) < std::tie(rhs.timestamp, rhs.chip_id, rhs.core_x, rhs.core_y, rhs.risc, rhs.marker);
         }
 
         uint64_t get_thread_id() const
@@ -99,5 +99,7 @@ namespace tracy
             return threadID;
         }
     };
+
+
 }
 #endif
