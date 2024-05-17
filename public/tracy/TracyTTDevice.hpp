@@ -144,6 +144,17 @@ namespace tracy {
 
             const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::Begin });
 
+            int color;
+
+            if (event.zone_name.find("PROFILER") != std::string::npos)
+            {
+                color = tracy::Color::Tomato3;
+            }
+            else
+            {
+                color = customColors[event.risc % customColors.size()];
+            }
+
             const auto srcloc = Profiler::AllocSourceLocation(
                     event.line,
                     event.file.c_str(),
@@ -152,7 +163,7 @@ namespace tracy {
                     event.zone_name.length(),
                     event.zone_name.c_str(),
                     event.zone_name.length(),
-                    customColors[event.risc % customColors.size()]);
+                    color);
 
             auto zoneBegin = Profiler::QueueSerial();
             MemWrite(&zoneBegin->hdr.type, QueueType::GpuZoneBeginAllocSrcLocSerial);
