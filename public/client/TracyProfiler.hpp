@@ -70,8 +70,9 @@ struct GpuCtxWrapper
 
 TRACY_API moodycamel::ConcurrentQueue<QueueItem>::ExplicitProducer* GetToken();
 TRACY_API Profiler& GetProfiler();
+TRACY_API int64_t GetInitTime();
 TRACY_API std::atomic<uint32_t>& GetLockCounter();
-TRACY_API std::atomic<uint8_t>& GetGpuCtxCounter();
+TRACY_API std::atomic<uint16_t>& GetGpuCtxCounter();
 TRACY_API GpuCtxWrapper& GetGpuCtx();
 TRACY_API uint32_t GetThreadHandle();
 TRACY_API bool ProfilerAvailable();
@@ -779,6 +780,8 @@ public:
         return uint64_t( ptr );
     }
 
+    double m_timerMul;
+
 private:
     enum class DequeueStatus { DataDequeued, ConnectionLost, QueueEmpty };
     enum class ThreadCtxStatus { Same, Changed, ConnectionLost };
@@ -919,7 +922,6 @@ private:
     static int64_t GetTimeQpc();
 #endif
 
-    double m_timerMul;
     uint64_t m_resolution;
     uint64_t m_delay;
     std::atomic<int64_t> m_timeBegin;

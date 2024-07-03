@@ -1152,7 +1152,7 @@ struct ProfilerData
     moodycamel::ConcurrentQueue<QueueItem> queue;
     Profiler profiler;
     std::atomic<uint32_t> lockCounter { 0 };
-    std::atomic<uint8_t> gpuCtxCounter { 0 };
+    std::atomic<uint16_t> gpuCtxCounter { 0 };
     std::atomic<ThreadNameData*> threadNameData { nullptr };
 };
 
@@ -1293,7 +1293,7 @@ TRACY_API Profiler& GetProfiler() { return GetProfilerData().profiler; }
 TRACY_API moodycamel::ConcurrentQueue<QueueItem>& GetQueue() { return GetProfilerData().queue; }
 TRACY_API int64_t GetInitTime() { return GetProfilerData().initTime; }
 TRACY_API std::atomic<uint32_t>& GetLockCounter() { return GetProfilerData().lockCounter; }
-TRACY_API std::atomic<uint8_t>& GetGpuCtxCounter() { return GetProfilerData().gpuCtxCounter; }
+TRACY_API std::atomic<uint16_t>& GetGpuCtxCounter() { return GetProfilerData().gpuCtxCounter; }
 TRACY_API GpuCtxWrapper& GetGpuCtx() { return GetProfilerThreadData().gpuCtx; }
 TRACY_API uint32_t GetThreadHandle() { return detail::GetThreadHandleImpl(); }
 std::atomic<ThreadNameData*>& GetThreadNameData() { return GetProfilerData().threadNameData; }
@@ -1334,7 +1334,7 @@ thread_local bool RpThreadInitDone = false;
 thread_local bool RpThreadShutdown = false;
 moodycamel::ConcurrentQueue<QueueItem> init_order(103) s_queue( QueuePrealloc );
 std::atomic<uint32_t> init_order(104) s_lockCounter( 0 );
-std::atomic<uint8_t> init_order(104) s_gpuCtxCounter( 0 );
+std::atomic<uint16_t> init_order(104) s_gpuCtxCounter( 0 );
 
 thread_local GpuCtxWrapper init_order(104) s_gpuCtx { nullptr };
 
@@ -1353,7 +1353,7 @@ TRACY_API Profiler& GetProfiler() { return s_profiler; }
 TRACY_API moodycamel::ConcurrentQueue<QueueItem>& GetQueue() { return s_queue; }
 TRACY_API int64_t GetInitTime() { return s_initTime.val; }
 TRACY_API std::atomic<uint32_t>& GetLockCounter() { return s_lockCounter; }
-TRACY_API std::atomic<uint8_t>& GetGpuCtxCounter() { return s_gpuCtxCounter; }
+TRACY_API std::atomic<uint16_t>& GetGpuCtxCounter() { return s_gpuCtxCounter; }
 TRACY_API GpuCtxWrapper& GetGpuCtx() { return s_gpuCtx; }
 TRACY_API uint32_t GetThreadHandle() { return s_threadHandle.val; }
 

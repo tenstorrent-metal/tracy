@@ -91,10 +91,11 @@ extern "C" const char* ___tracy_demangle( const char* mangled )
 #endif
 #endif
 
-#if TRACY_HAS_CALLSTACK == 3
-#   define TRACY_USE_IMAGE_CACHE
-#   include <link.h>
-#endif
+//TODO:(TT_MO) This causes hangs on tt-lib import on python side
+//#if TRACY_HAS_CALLSTACK == 3
+//#   define TRACY_USE_IMAGE_CACHE
+//#   include <link.h>
+//#endif
 
 namespace tracy
 {
