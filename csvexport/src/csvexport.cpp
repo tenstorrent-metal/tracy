@@ -26,7 +26,7 @@ void print_usage_exit(int e)
     fprintf(stderr, "  -h, --help        Print usage\n");
     fprintf(stderr, "  -f, --filter arg  Filter zone names (default: "")\n");
     fprintf(stderr, "  -x arg            List of special functions delimited by comma (default: "")\n");
-    fprintf(stderr, "  -p arg            Parent to find for special functions (default: "")\n");
+    fprintf(stderr, "  -r arg            Parent to find for special functions (default: "")\n");
     fprintf(stderr, "  -s, --sep arg     CSV separator (default: ,)\n");
     fprintf(stderr, "  -c, --case        Case sensitive filtering\n");
     fprintf(stderr, "  -e, --self        Get self times\n");
@@ -87,7 +87,7 @@ Args parse_args(int argc, char** argv)
         case 's':
             args.separator = optarg;
             break;
-        case 'p':
+        case 'r':
             args.special_parent_function = optarg;
             break;
         case 'x':
