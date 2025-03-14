@@ -189,7 +189,11 @@ namespace tracy {
                 color = customColors[event.risc % customColors.size()];
             }
 
-            std::string run_id_string = "OP ID:" + std::to_string(event.run_num);
+            std::string run_id_string = "";
+            if (event.run_num > 0)
+            {
+                run_id_string = "OP ID:" + std::to_string(event.run_num);
+            }
 
             const auto srcloc = Profiler::AllocSourceLocation(
                     event.line,
