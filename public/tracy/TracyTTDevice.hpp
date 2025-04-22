@@ -122,7 +122,7 @@ namespace tracy {
             MemWrite( &item->hdr.type, QueueType::GpuCalibration );
             MemWrite( &item->gpuCalibration.gpuTime, (int64_t)round((double)m_tgpu/m_frequency) );
             MemWrite( &item->gpuCalibration.cpuTime, tcpu );
-            MemWrite( &item->gpuCalibration.cpuDelta, mm_tcpu - tcpu );
+            MemWrite( &item->gpuCalibration.cpuDelta, (int64_t)((tcpu - mm_tcpu) * get_tracy_timer_mul()));
             MemWrite( &item->gpuCalibration.context, GetId() );
             Profiler::QueueSerialFinish();
 
