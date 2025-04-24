@@ -153,6 +153,7 @@ namespace tracy {
         tracy_force_inline unsigned int NextQueryId(EventInfo eventInfo)
         {
             const auto id = m_head;
+            if ((m_head + 1) % QueryCount == m_tail) m_tail = m_head;
             m_head = (m_head + 1) % QueryCount;
             TRACY_TT_ASSERT(m_head != m_tail);
             m_query[id] = eventInfo;
