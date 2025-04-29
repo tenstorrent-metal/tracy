@@ -84,9 +84,24 @@ namespace tracy
             chip_id = (threadID >> CHIP_BIT_SHIFT) & ((1 << CHIP_BIT_COUNT) - 1);
         }
 
-        friend bool operator<(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs)
-        {
-            return std::tie(lhs.timestamp, lhs.chip_id, lhs.core_x, lhs.core_y, lhs.risc, lhs.marker) < std::tie(rhs.timestamp, rhs.chip_id, rhs.core_x, rhs.core_y, rhs.risc, rhs.marker);
+        friend bool operator<(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs) {
+            ZoneScopedN("operator<");
+            if (lhs.timestamp != rhs.timestamp) {
+                return lhs.timestamp < rhs.timestamp;
+            }
+            if (lhs.chip_id != rhs.chip_id) {
+                return lhs.chip_id < rhs.chip_id;
+            }
+            if (lhs.core_x != rhs.core_x) {
+                return lhs.core_x < rhs.core_x;
+            }
+            if (lhs.core_y != rhs.core_y) {
+                return lhs.core_y < rhs.core_y;
+            }
+            if (lhs.risc != rhs.risc) {
+                return lhs.risc < rhs.risc;
+            }
+            return lhs.marker < rhs.marker;
         }
 
         uint64_t get_thread_id() const
@@ -99,7 +114,22 @@ namespace tracy
             return threadID;
         }
     };
-
-
 }
+
+namespace std {
+template <>
+struct hash<tracy::TTDeviceEvent> {
+    std::size_t operator()(const tracy::TTDeviceEvent& obj) const {
+        std::hash<uint64_t> hasher;
+        std::size_t hash_value = 0;
+        hash_value ^= hasher(obj.timestamp) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.chip_id) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.core_x) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.core_y) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.risc) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.marker) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        return hash_value;
+    }
+};
+}  // namespace std
 #endif
