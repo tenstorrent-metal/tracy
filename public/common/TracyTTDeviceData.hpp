@@ -1,8 +1,6 @@
 #ifndef __TRACYTTDEVICEDATA_HPP__
 #define __TRACYTTDEVICEDATA_HPP__
 
-#include "tracy/Tracy.hpp"
-
 namespace tracy
 {
     static std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
@@ -87,7 +85,6 @@ namespace tracy
         }
 
         friend bool operator<(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs) {
-            ZoneScopedN("operator<");
             if (lhs.timestamp != rhs.timestamp) {
                 return lhs.timestamp < rhs.timestamp;
             }
