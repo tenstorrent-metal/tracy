@@ -107,7 +107,6 @@ namespace tracy
         }
 
         friend bool operator==(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs) {
-            ZoneScopedN("operator==");
             return lhs.timestamp == rhs.timestamp && lhs.chip_id == rhs.chip_id && lhs.core_x == rhs.core_x &&
                    lhs.core_y == rhs.core_y && lhs.risc == rhs.risc && lhs.marker == rhs.marker;
         }
