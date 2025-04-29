@@ -1,6 +1,8 @@
 #ifndef __TRACYTTDEVICEDATA_HPP__
 #define __TRACYTTDEVICEDATA_HPP__
 
+#include "tracy/Tracy.hpp"
+
 namespace tracy
 {
     static std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
@@ -102,6 +104,12 @@ namespace tracy
                 return lhs.risc < rhs.risc;
             }
             return lhs.marker < rhs.marker;
+        }
+
+        friend bool operator==(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs) {
+            ZoneScopedN("operator==");
+            return lhs.timestamp == rhs.timestamp && lhs.chip_id == rhs.chip_id && lhs.core_x == rhs.core_x &&
+                   lhs.core_y == rhs.core_y && lhs.risc == rhs.risc && lhs.marker == rhs.marker;
         }
 
         uint64_t get_thread_id() const
