@@ -126,12 +126,13 @@ struct hash<tracy::TTDeviceEvent> {
     std::size_t operator()(const tracy::TTDeviceEvent& obj) const {
         std::hash<uint64_t> hasher;
         std::size_t hash_value = 0;
-        hash_value ^= hasher(obj.timestamp) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-        hash_value ^= hasher(obj.chip_id) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-        hash_value ^= hasher(obj.core_x) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-        hash_value ^= hasher(obj.core_y) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-        hash_value ^= hasher(obj.risc) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-        hash_value ^= hasher(obj.marker) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+        constexpr std::size_t hash_combine_prime = 0x9e3779b9;
+        hash_value ^= hasher(obj.timestamp) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.chip_id) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.core_x) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.core_y) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.risc) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.marker) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
         return hash_value;
     }
 };
