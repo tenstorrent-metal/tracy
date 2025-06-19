@@ -51,6 +51,11 @@ namespace tracy
         return mask;
     }
 
+    struct TTDeviceEventLinearRegressionParams {
+        double freq_scale = 1.0;
+        int64_t shift = 0;
+    };
+
     enum TTDeviceEventPhase
     {
         begin,
