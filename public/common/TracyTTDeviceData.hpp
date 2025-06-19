@@ -3,7 +3,53 @@
 
 namespace tracy
 {
-    static std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
+    inline std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
+
+    enum class TTDeviceEventZoneNameKeyword : uint16_t {
+        BRISC_FW = 1,
+        ERISC_FW = 2,
+        SYNC_ZONE = 4,
+        PROFILER = 8,
+        DISPATCH = 16,
+        PROCESS_CMD = 32,
+        RUNTIME_HOST_ID_DISPATCH = 64,
+        PACKED_DATA_DISPATCH = 128,
+        PACKED_LARGE_DATA_DISPATCH = 256
+    };
+
+    inline std::unordered_map<std::string, TTDeviceEventZoneNameKeyword> zoneNameKeywordsMap = {
+        {"BRISC-FW", TTDeviceEventZoneNameKeyword::BRISC_FW},
+        {"ERISC-FW", TTDeviceEventZoneNameKeyword::ERISC_FW},
+        {"SYNC-ZONE", TTDeviceEventZoneNameKeyword::SYNC_ZONE},
+        {"PROFILER", TTDeviceEventZoneNameKeyword::PROFILER},
+        {"DISPATCH", TTDeviceEventZoneNameKeyword::DISPATCH},
+        {"process_cmd", TTDeviceEventZoneNameKeyword::PROCESS_CMD},
+        {"runtime_host_id_dispatch", TTDeviceEventZoneNameKeyword::RUNTIME_HOST_ID_DISPATCH},
+        {"packed_data_dispatch", TTDeviceEventZoneNameKeyword::PACKED_DATA_DISPATCH},
+        {"packed_large_data_dispatch", TTDeviceEventZoneNameKeyword::PACKED_LARGE_DATA_DISPATCH},
+    };
+
+    inline bool hasZoneNameKeyword(uint16_t zone_name_keywords_mask, TTDeviceEventZoneNameKeyword keyword) {
+        return (zone_name_keywords_mask & static_cast<uint16_t>(keyword)) != 0;
+    }
+
+    // inline uint16_t addZoneNameKeywordToMask(uint16_t zone_name_keywords_mask, TTDeviceEventZoneNameKeyword keyword) {
+    //     return zone_name_keywords_mask | static_cast<uint16_t>(keyword);
+    // }
+
+    // inline uint16_t removeZoneNameKeywordFromMask(uint16_t zone_name_keywords_mask, TTDeviceEventZoneNameKeyword keyword) {
+    //     return zone_name_keywords_mask & ~static_cast<uint16_t>(keyword);
+    // }
+
+    inline uint16_t generateZoneNameKeywordsMask(const std::string& zone_name) {
+        uint16_t mask = 0;
+        for (const auto& [key, value] : zoneNameKeywordsMap) {
+            if (zone_name.find(key) != std::string::npos) {
+                mask |= static_cast<uint16_t>(value);
+            }
+        }
+        return mask;
+    }
 
     enum TTDeviceEventPhase
     {
@@ -43,6 +89,7 @@ namespace tracy
         uint64_t line;
         std::string file;
         std::string zone_name;
+        uint16_t zone_name_keywords_mask;
         TTDeviceEventPhase zone_phase;
 
         TTDeviceEvent (): 
@@ -56,25 +103,36 @@ namespace tracy
             line(INVALID_NUM),
             file(""),
             zone_name(""),
+            zone_name_keywords_mask(0),
             zone_phase(begin)
         {
         }
 
-        TTDeviceEvent (
-                uint64_t run_num,
-                uint64_t chip_id,
-                uint64_t core_x,
-                uint64_t core_y,
-                uint64_t risc,
-                uint64_t marker,
-                uint64_t timestamp,
-                uint64_t line,
-                std::string file,
-                std::string zone_name,
-                TTDeviceEventPhase zone_phase
-                ): run_num(run_num),chip_id(chip_id),core_x(core_x),core_y(core_y),risc(risc),marker(marker),timestamp(timestamp),line(line),file(file),zone_name(zone_name),zone_phase(zone_phase)
-        {
-        }
+        TTDeviceEvent(
+            uint64_t run_num,
+            uint64_t chip_id,
+            uint64_t core_x,
+            uint64_t core_y,
+            uint64_t risc,
+            uint64_t marker,
+            uint64_t timestamp,
+            uint64_t line,
+            std::string file,
+            std::string zone_name,
+            uint16_t zone_name_keywords_mask,
+            TTDeviceEventPhase zone_phase) :
+            run_num(run_num),
+            chip_id(chip_id),
+            core_x(core_x),
+            core_y(core_y),
+            risc(risc),
+            marker(marker),
+            timestamp(timestamp),
+            line(line),
+            file(file),
+            zone_name(zone_name),
+            zone_name_keywords_mask(zone_name_keywords_mask),
+            zone_phase(zone_phase) {}
 
         TTDeviceEvent (uint64_t threadID) :run_num(-1),marker(-1)
         {

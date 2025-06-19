@@ -179,16 +179,10 @@ namespace tracy {
 
             const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::Begin });
 
-            int color;
-
-            if (event.zone_name.find("PROFILER") != std::string::npos)
-            {
-                color = tracy::Color::Tomato3;
-            }
-            else
-            {
-                color = customColors[event.risc % customColors.size()];
-            }
+            const uint32_t color =
+                (hasZoneNameKeyword(event.zone_name_keywords_mask, TTDeviceEventZoneNameKeyword::PROFILER))
+                    ? tracy::Color::Tomato3
+                    : customColors[event.risc % customColors.size()];
 
             std::string run_id_string = "";
             if (event.run_num > 0)
