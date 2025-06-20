@@ -33,14 +33,6 @@ namespace tracy
         return (zone_name_keywords_mask & static_cast<uint16_t>(keyword)) != 0;
     }
 
-    // inline uint16_t addZoneNameKeywordToMask(uint16_t zone_name_keywords_mask, TTDeviceEventZoneNameKeyword keyword) {
-    //     return zone_name_keywords_mask | static_cast<uint16_t>(keyword);
-    // }
-
-    // inline uint16_t removeZoneNameKeywordFromMask(uint16_t zone_name_keywords_mask, TTDeviceEventZoneNameKeyword keyword) {
-    //     return zone_name_keywords_mask & ~static_cast<uint16_t>(keyword);
-    // }
-
     inline uint16_t generateZoneNameKeywordsMask(const std::string& zone_name) {
         uint16_t mask = 0;
         for (const auto& [key, value] : zoneNameKeywordsMap) {
@@ -50,11 +42,6 @@ namespace tracy
         }
         return mask;
     }
-
-    struct TTDeviceEventLinearRegressionParams {
-        double freq_scale = 1.0;
-        int64_t shift = 0;
-    };
 
     enum TTDeviceEventPhase
     {

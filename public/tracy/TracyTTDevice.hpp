@@ -7,8 +7,8 @@
 #define TracyTTDestroy(c)
 #define TracyTTContextName(c, x, y)
 #define TracyTTContextPopulate(c, x, y, z)
-#define TracyTTPushStartZone(c, e, p)
-#define TracyTTPushEndZone(c, e, p)
+#define TracyTTPushStartZone(c, e)
+#define TracyTTPushEndZone(c, e)
 
 #define TracyGetTimerMul() 0
 #define TracyGetBaseTime() 0
@@ -167,7 +167,7 @@ namespace tracy {
         }
 
         void PushStartZone(
-            const TTDeviceEvent& event, const TTDeviceEventLinearRegressionParams& eventLinearRegressionParams) {
+            const TTDeviceEvent& event) {
             constexpr std::array<int, 6> customColors = {
                 tracy::Color::Orange2,
                 tracy::Color::SeaGreen3,
@@ -183,10 +183,7 @@ namespace tracy {
                     ? tracy::Color::Tomato3
                     : customColors[event.risc % customColors.size()];
 
-            std::string run_id_string = "";
-            if (event.run_num > 0) {
-                run_id_string = "OP ID:" + std::to_string(event.run_num);
-            }
+            const std::string run_id_string = event.run_num > 0 ? "OP ID:" + std::to_string(event.run_num) : "";
 
             const auto srcloc = Profiler::AllocSourceLocation(
                 event.line,
@@ -209,19 +206,14 @@ namespace tracy {
 
             auto zoneTime = Profiler::QueueSerial();
             MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
-            MemWrite(
-                &zoneTime->gpuTime.gpuTime,
-                (uint64_t)round(
-                    (double)(event.timestamp * eventLinearRegressionParams.freq_scale +
-                             eventLinearRegressionParams.shift) /
-                    m_frequency));
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp / m_frequency));
             MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
             MemWrite(&zoneTime->gpuTime.context, this->GetId());
             Profiler::QueueSerialFinish();
         }
 
         void PushEndZone(
-            const TTDeviceEvent& event, const TTDeviceEventLinearRegressionParams& eventLinearRegressionParams) {
+            const TTDeviceEvent& event) {
             const auto queryId = this->NextQueryId(EventInfo{event, EventPhase::End});
 
             auto zoneEnd = Profiler::QueueSerial();
@@ -234,12 +226,7 @@ namespace tracy {
 
             auto zoneTime = Profiler::QueueSerial();
             MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
-            MemWrite(
-                &zoneTime->gpuTime.gpuTime,
-                (uint64_t)round(
-                    (double)(event.timestamp * eventLinearRegressionParams.freq_scale +
-                             eventLinearRegressionParams.shift) /
-                    m_frequency));
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp / m_frequency));
             MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
             MemWrite(&zoneTime->gpuTime.context, this->GetId());
             Profiler::QueueSerialFinish();
@@ -281,8 +268,8 @@ using TracyTTCtx = tracy::TTCtx*;
 #define TracyTTContextName(ctx, name, size) ctx->Name(name, size)
 #define TracyTTContextPopulate(ctx, cpuTime, timeshift, frequency) ctx->PopulateTTContext(cpuTime, timeshift, frequency)
 #define TracyTTContextCalibrate(ctx, cpuTime, timeshift, frequency) ctx->CalibrateTTContext(cpuTime, timeshift, frequency)
-#define TracyTTPushStartZone(ctx, event, linearRegressionParams) ctx->PushStartZone(event, linearRegressionParams)
-#define TracyTTPushEndZone(ctx, event, linearRegressionParams) ctx->PushEndZone(event, linearRegressionParams)
+#define TracyTTPushStartZone(ctx, event) ctx->PushStartZone(event)
+#define TracyTTPushEndZone(ctx, event) ctx->PushEndZone(event)
 
 #define TracyGetTimerMul() tracy::get_tracy_timer_mul()
 #define TracyGetBaseTime() tracy::get_tracy_base_time()
