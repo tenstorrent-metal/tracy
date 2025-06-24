@@ -168,20 +168,7 @@ namespace tracy {
 
         void PushStartZone(
             const TTDeviceEvent& event) {
-            constexpr std::array<int, 6> customColors = {
-                tracy::Color::Orange2,
-                tracy::Color::SeaGreen3,
-                tracy::Color::SkyBlue3,
-                tracy::Color::Turquoise2,
-                tracy::Color::CadetBlue1,
-                tracy::Color::Yellow3};
-
             const auto queryId = this->NextQueryId(EventInfo{event, EventPhase::Begin});
-
-            const uint32_t color =
-                (hasZoneNameKeyword(event.zone_name_keywords_mask, TTDeviceEventZoneNameKeyword::PROFILER))
-                    ? tracy::Color::Tomato3
-                    : customColors[event.risc % customColors.size()];
 
             const std::string run_id_string = event.run_num > 0 ? "OP ID:" + std::to_string(event.run_num) : "";
 
@@ -193,7 +180,7 @@ namespace tracy {
                 run_id_string.length(),
                 event.zone_name.c_str(),
                 event.zone_name.length(),
-                color);
+                event.color);
 
             auto zoneBegin = Profiler::QueueSerial();
             MemWrite(&zoneBegin->hdr.type, QueueType::GpuZoneBeginAllocSrcLocSerial);
