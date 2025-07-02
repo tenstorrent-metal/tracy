@@ -1,9 +1,11 @@
 #ifndef __TRACYTTDEVICEDATA_HPP__
 #define __TRACYTTDEVICEDATA_HPP__
 
+#include "TracyColor.hpp"
+
 namespace tracy
 {
-    static std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
+    inline std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
 
     enum TTDeviceEventPhase
     {
@@ -38,12 +40,13 @@ namespace tracy
         uint64_t core_x;
         uint64_t core_y;
         uint64_t risc;
-        uint64_t marker;
+        uint64_t timer_id;
         uint64_t timestamp;
         uint64_t line;
         std::string file;
         std::string zone_name;
         TTDeviceEventPhase zone_phase;
+        tracy::Color::ColorType color;
 
         TTDeviceEvent (): 
             run_num(INVALID_NUM),
@@ -51,32 +54,43 @@ namespace tracy
             core_x(INVALID_NUM),
             core_y(INVALID_NUM),
             risc(INVALID_NUM),
-            marker(INVALID_NUM),
+            timer_id(INVALID_NUM),
             timestamp(INVALID_NUM),
             line(INVALID_NUM),
             file(""),
             zone_name(""),
-            zone_phase(begin)
+            zone_phase(begin),
+            color(tracy::Color::ColorType::Black)
         {
         }
 
-        TTDeviceEvent (
-                uint64_t run_num,
-                uint64_t chip_id,
-                uint64_t core_x,
-                uint64_t core_y,
-                uint64_t risc,
-                uint64_t marker,
-                uint64_t timestamp,
-                uint64_t line,
-                std::string file,
-                std::string zone_name,
-                TTDeviceEventPhase zone_phase
-                ): run_num(run_num),chip_id(chip_id),core_x(core_x),core_y(core_y),risc(risc),marker(marker),timestamp(timestamp),line(line),file(file),zone_name(zone_name),zone_phase(zone_phase)
-        {
-        }
+        TTDeviceEvent(
+            uint64_t run_num,
+            uint64_t chip_id,
+            uint64_t core_x,
+            uint64_t core_y,
+            uint64_t risc,
+            uint64_t timer_id,
+            uint64_t timestamp,
+            uint64_t line,
+            std::string file,
+            std::string zone_name,
+            TTDeviceEventPhase zone_phase,
+            tracy::Color::ColorType color) :
+            run_num(run_num),
+            chip_id(chip_id),
+            core_x(core_x),
+            core_y(core_y),
+            risc(risc),
+            timer_id(timer_id),
+            timestamp(timestamp),
+            line(line),
+            file(file),
+            zone_name(zone_name),
+            zone_phase(zone_phase),
+            color(color) {}
 
-        TTDeviceEvent (uint64_t threadID) :run_num(-1),marker(-1)
+        TTDeviceEvent (uint64_t threadID) :run_num(-1),timer_id(-1)
         {
             risc = (threadID) & ((1 << RISC_BIT_COUNT) - 1);
             core_x = (threadID >> CORE_X_BIT_SHIFT) & ((1 << CORE_X_BIT_COUNT) - 1);
@@ -100,12 +114,12 @@ namespace tracy
             if (lhs.risc != rhs.risc) {
                 return lhs.risc < rhs.risc;
             }
-            return lhs.marker < rhs.marker;
+            return lhs.timer_id < rhs.timer_id;
         }
 
         friend bool operator==(const TTDeviceEvent& lhs, const TTDeviceEvent& rhs) {
             return lhs.timestamp == rhs.timestamp && lhs.chip_id == rhs.chip_id && lhs.core_x == rhs.core_x &&
-                   lhs.core_y == rhs.core_y && lhs.risc == rhs.risc && lhs.marker == rhs.marker;
+                   lhs.core_y == rhs.core_y && lhs.risc == rhs.risc && lhs.timer_id == rhs.timer_id;
         }
 
         uint64_t get_thread_id() const
@@ -132,7 +146,7 @@ struct hash<tracy::TTDeviceEvent> {
         hash_value ^= hasher(obj.core_x) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
         hash_value ^= hasher(obj.core_y) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
         hash_value ^= hasher(obj.risc) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
-        hash_value ^= hasher(obj.marker) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
+        hash_value ^= hasher(obj.timer_id) + hash_combine_prime + (hash_value << 6) + (hash_value >> 2);
         return hash_value;
     }
 };

@@ -166,45 +166,21 @@ namespace tracy {
             return m_query[id];
         }
 
-        void PushStartZone (const TTDeviceEvent& event)
-        {
-            constexpr std::array<int,6> customColors = {
-                tracy::Color::Orange2,
-                tracy::Color::SeaGreen3,
-                tracy::Color::SkyBlue3,
-                tracy::Color::Turquoise2,
-                tracy::Color::CadetBlue1,
-                tracy::Color::Yellow3
-            };
+        void PushStartZone(
+            const TTDeviceEvent& event) {
+            const auto queryId = this->NextQueryId(EventInfo{event, EventPhase::Begin});
 
-            const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::Begin });
-
-            int color;
-
-            if (event.zone_name.find("PROFILER") != std::string::npos)
-            {
-                color = tracy::Color::Tomato3;
-            }
-            else
-            {
-                color = customColors[event.risc % customColors.size()];
-            }
-
-            std::string run_id_string = "";
-            if (event.run_num > 0)
-            {
-                run_id_string = "OP ID:" + std::to_string(event.run_num);
-            }
+            const std::string run_id_string = event.run_num > 0 ? "OP ID:" + std::to_string(event.run_num) : "";
 
             const auto srcloc = Profiler::AllocSourceLocation(
-                    event.line,
-                    event.file.c_str(),
-                    event.file.length(),
-                    run_id_string.c_str(),
-                    run_id_string.length(),
-                    event.zone_name.c_str(),
-                    event.zone_name.length(),
-                    color);
+                event.line,
+                event.file.c_str(),
+                event.file.length(),
+                run_id_string.c_str(),
+                run_id_string.length(),
+                event.zone_name.c_str(),
+                event.zone_name.length(),
+                event.color);
 
             auto zoneBegin = Profiler::QueueSerial();
             MemWrite(&zoneBegin->hdr.type, QueueType::GpuZoneBeginAllocSrcLocSerial);
@@ -217,15 +193,15 @@ namespace tracy {
 
             auto zoneTime = Profiler::QueueSerial();
             MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
-            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp/m_frequency));
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp / m_frequency));
             MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
             MemWrite(&zoneTime->gpuTime.context, this->GetId());
             Profiler::QueueSerialFinish();
         }
 
-        void PushEndZone (const TTDeviceEvent& event)
-        {
-            const auto queryId = this->NextQueryId(EventInfo{ event, EventPhase::End });
+        void PushEndZone(
+            const TTDeviceEvent& event) {
+            const auto queryId = this->NextQueryId(EventInfo{event, EventPhase::End});
 
             auto zoneEnd = Profiler::QueueSerial();
             MemWrite(&zoneEnd->hdr.type, QueueType::GpuZoneEndSerial);
@@ -234,10 +210,10 @@ namespace tracy {
             MemWrite(&zoneEnd->gpuZoneEnd.queryId, (uint16_t)queryId);
             MemWrite(&zoneEnd->gpuZoneEnd.context, this->GetId());
             Profiler::QueueSerialFinish();
-            
+
             auto zoneTime = Profiler::QueueSerial();
             MemWrite(&zoneTime->hdr.type, QueueType::GpuTime);
-            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp/m_frequency));
+            MemWrite(&zoneTime->gpuTime.gpuTime, (uint64_t)round((double)event.timestamp / m_frequency));
             MemWrite(&zoneTime->gpuTime.queryId, (uint16_t)queryId);
             MemWrite(&zoneTime->gpuTime.context, this->GetId());
             Profiler::QueueSerialFinish();
