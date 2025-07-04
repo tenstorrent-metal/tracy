@@ -5,7 +5,7 @@
 
 namespace tracy
 {
-    inline std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC"};
+    inline std::string riscName[] = {"BRISC", "NCRISC", "TRISC_0", "TRISC_1", "TRISC_2", "ERISC", "CORE_AGG"};
 
     enum TTDeviceEventPhase
     {
