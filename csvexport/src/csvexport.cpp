@@ -483,16 +483,14 @@ int main(int argc, char** argv)
                 if (args.self_time) {
                     timespan -= GetZoneChildTimeFast(worker, *zone_event);
                 }
-                values[4] = std::to_string(timespan);
-                values[5] = std::to_string(tId);
+                values[6] = std::to_string(timespan);
+                values[7] = std::to_string(tId);
                 if (worker.HasZoneExtra(*zone_event)) {
                     const auto& text = worker.GetZoneExtra(*zone_event).text;
                     if (text.Active()) {
-                        values[6] = worker.GetString(text);
+                        values[8] = worker.GetString(text);
                     }
                 }
-                values[6] = std::to_string(timespan);
-                values[7] = std::to_string(tId);
 
                 for (auto& function: specialFunctions)
                 {
@@ -506,7 +504,7 @@ int main(int argc, char** argv)
                                 auto extra = worker.GetZoneExtra(*special_parent_zone_event);
                                 if (extra.text.Active())
                                 {
-                                    values[8] = worker.GetString(extra.text);
+                                    values[9] = worker.GetString(extra.text);
                                 }
                             }
                         }
