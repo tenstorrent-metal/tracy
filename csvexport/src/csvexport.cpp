@@ -26,7 +26,7 @@ void print_usage_exit(int e)
     fprintf(stderr, "  -h, --help        Print usage\n");
     fprintf(stderr, "  -f, --filter arg  Filter zone names (default: "")\n");
     fprintf(stderr, "  -x arg            List of special functions delimited by comma (default: "")\n");
-    fprintf(stderr, "  -p arg            Parent to find for special functions (default: "")\n");
+    fprintf(stderr, "  -t arg            Parent to find for special functions (default: "")\n");
     fprintf(stderr, "  -s, --sep arg     CSV separator (default: ,)\n");
     fprintf(stderr, "  -c, --case        Case sensitive filtering\n");
     fprintf(stderr, "  -e, --self        Get self times\n");
@@ -72,12 +72,12 @@ Args parse_args(int argc, char** argv)
         { "messages", no_argument, NULL, 'm' },
         { "plot", no_argument, NULL, 'p' },
         { "special_functions", no_argument, NULL, 'x' },
-        { "special_parent_function", no_argument, NULL, 'y' },
+        { "special_parent_function", no_argument, NULL, 't' },
         { NULL, 0, NULL, 0 }
     };
 
     int c;
-    while ((c = getopt_long(argc, argv, "hf:y:x:s:ceugmp", long_opts, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "hf:t:x:s:ceugmp", long_opts, NULL)) != -1)
     {
         switch (c)
         {
@@ -90,7 +90,7 @@ Args parse_args(int argc, char** argv)
         case 's':
             args.separator = optarg;
             break;
-        case 'p':
+        case 't':
             args.special_parent_function = optarg;
             break;
         case 'x':
@@ -562,37 +562,6 @@ int main(int argc, char** argv)
                     values[3] = std::to_string(val.time.Val());
                     values[6] = std::to_string(val.val);
                 }
-//=======
-    //for(auto& it : slzg_selected)
-    //{
-        //std::vector<std::string> values(columns.size());
-
-        //values[0] = get_name(it->first, worker);
-
-        //const auto& srcloc = worker.GetSourceLocation(it->first);
-        //values[1] = worker.GetString(srcloc.file);
-        //values[2] = std::to_string(srcloc.line);
-
-        //const auto& zone_data = it->second;
-
-        //if (args.unwrap)
-        //{
-            //int i = 0;
-            //for (const auto& zone_thread_data : zone_data.zones) {
-                //const auto zone_event = zone_thread_data.Zone();
-                //const auto tId = zone_thread_data.Thread();
-
-                //const auto start = zone_event->GpuStart();
-                //const auto end = zone_event->GpuEnd();
-
-                //values[5] = std::to_string(start);
-
-                //auto timespan = end - start;
-
-                //values[6] = std::to_string(timespan);
-                //values[7] = std::to_string(tId);
-
-//>>>>>>> TTDevice sync support
                 std::string row = join(values, args.separator);
                 printf("%s\n", row.data());
             }
