@@ -434,7 +434,7 @@ void View::DrawOptions()
             }
             else
             {
-                ImGui::TextDisabled( "(%zu/%zu)", visibleMultiCntUncont, multiCntUncont );
+                ImGui::TextDisabled( "(%llu/%zu)", visibleMultiCntUncont, multiCntUncont );
             }
             if( multiUncontExpand )
             {
@@ -521,7 +521,7 @@ void View::DrawOptions()
             }
             else
             {
-                ImGui::TextDisabled( "(%zu/%zu)", visibleSingleCnt, singleCnt );
+                ImGui::TextDisabled( "(%llu/%zu)", visibleSingleCnt, singleCnt );
             }
             if( singleExpand )
             {
@@ -808,7 +808,7 @@ void View::DrawOptions()
         }
         else
         {
-            ImGui::TextDisabled( "(%zu/%zu)", visibleFrames, m_worker.GetFrames().size() );
+            ImGui::TextDisabled( "(%llu/%zu)", visibleFrames, m_worker.GetFrames().size() );
         }
         if( expand )
         {
