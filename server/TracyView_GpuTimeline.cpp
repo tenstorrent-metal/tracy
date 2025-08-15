@@ -46,7 +46,7 @@ bool View::DrawGpu( const TimelineContext& ctx, const GpuCtxData& gpu, int& offs
     for( auto& tn :  tds)
     {
         auto & td = gpu.threadData.at(tn);
-        TTDeviceEvent event = TTDeviceEvent (tn);
+        TTDeviceMarker event = TTDeviceMarker (tn);
         snprintf(buf, threadNameSize, "%s", riscName[event.risc].c_str());
         auto& tl = td.timeline;
         assert( !tl.empty() );
