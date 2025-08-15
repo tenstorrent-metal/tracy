@@ -170,7 +170,9 @@ namespace tracy {
             const TTDeviceEvent& event) {
             const auto queryId = this->NextQueryId(EventInfo{event, EventPhase::Begin});
 
-            const std::string run_id_string = event.run_num > 0 ? "OP ID:" + std::to_string(event.run_num) : "";
+            const std::string id_string = event.risc == 6 ? "TRACE ID:" : "OP ID:";
+
+            const std::string run_id_string = event.run_num > 0 ? id_string + std::to_string(event.run_num) : "";
 
             const auto srcloc = Profiler::AllocSourceLocation(
                 event.line,
