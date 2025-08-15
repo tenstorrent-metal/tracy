@@ -166,22 +166,29 @@ namespace tracy {
             return m_query[id];
         }
 
+        std::string getRunIdString(const TTDeviceMarker& marker) {
+            // TODO(MO) Until #14847 avoid attaching opID as the zone function name except for B and E FW
+            // This is to avoid generating 5 to 10 times more source locations which is capped at 32K
+            if (!marker.marker_name_keyword_flags[static_cast<uint16_t>(MarkerDetails::MarkerNameKeyword::BRISC_FW)] &&
+                !marker.marker_name_keyword_flags[static_cast<uint16_t>(MarkerDetails::MarkerNameKeyword::ERISC_FW)]) {
+                return "";
+            }
+            const std::string id_string = marker.risc == 6 ? "TRACE ID:" : "OP ID:";
+            return marker.runtime_host_id > 0 ? id_string + std::to_string(marker.runtime_host_id) : "";
+        }
+
         void PushStartMarker(const TTDeviceMarker& marker) {
             const auto queryId = this->NextQueryId(EventInfo{marker, EventPhase::Begin});
+            const std::string run_id_string = this->getRunIdString(marker);
 
-            const std::string id_string = marker.risc == 6 ? "TRACE ID:" : "OP ID:";
-
-            // also skip attaching op id for brisc and erisc
-            const std::string run_id_string =
-                marker.runtime_host_id > 0 ? id_string + std::to_string(marker.runtime_host_id) : "";
-
-            constexpr std::array<tracy::Color::ColorType, 6> colors = {
+            constexpr std::array<tracy::Color::ColorType, 7> colors = {
                 tracy::Color::Orange2,
                 tracy::Color::SeaGreen3,
                 tracy::Color::SkyBlue3,
                 tracy::Color::Turquoise2,
                 tracy::Color::CadetBlue1,
-                tracy::Color::Yellow3};
+                tracy::Color::Yellow3,
+                tracy::Color::DarkSlateGray3};
             const tracy::Color::ColorType color =
                 (marker.marker_name_keyword_flags[static_cast<uint16_t>(MarkerDetails::MarkerNameKeyword::PROFILER)])
                     ? tracy::Color::Tomato3
