@@ -89,10 +89,29 @@
       var progressElement = document.getElementById('progress');
       var spinnerElement = document.getElementById('spinner');
       var preloadElement = document.getElementById('preload');
-
+      
+      const TRACE_FILENAME = 'newfile.tracy';
       var Module = {
-        preRun: [],
-        postRun: [],
+        preRun: [function() {
+          // Fetch and write the trace file before main() runs
+          var done = false;
+          fetch(TRACE_FILENAME)
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+              const byteArray = new Uint8Array(buffer);
+              FS.writeFile('/' + TRACE_FILENAME, byteArray);
+              done = true;
+            })
+            .catch(err => {
+              console.error('Failed to fetch ' + TRACE_FILENAME + ':', err);
+              done = true;
+            });
+          // Wait for fetch/write to complete before continuing
+          var start = Date.now();
+          while (!done && Date.now() - start < 5000) {} // Wait max 5s
+        }],
+        postRun: [],  
+        arguments: [TRACE_FILENAME],
         print: (function() {
           return function(text) {
             if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
@@ -139,6 +158,7 @@
           Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
         }
       };
+
       Module.setStatus('Downloading...');
       window.onerror = function(event) {
         // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
